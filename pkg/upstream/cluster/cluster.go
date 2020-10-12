@@ -86,7 +86,7 @@ func newSimpleCluster(clusterConfig v2.Cluster) types.Cluster {
 	} else {
 		info.connectTimeout = network.DefaultConnectTimeout
 	}
-
+	log.DefaultLogger.Infof("[newSimpleCluster] name:%s", clusterConfig.Name)
 	// tls mng
 	if !info.clusterManagerTLS {
 		mgr, err := mtls.NewTLSClientContextManager(&clusterConfig.TLS)

@@ -45,6 +45,7 @@ func (hook *defaultConfigHooks) GetCertificate(certIndex, keyIndex string) (tls.
 	if certIndex == "" || keyIndex == "" {
 		return tls.Certificate{}, ErrorNoCertConfigure
 	}
+	log.DefaultLogger.Infof("[GetCertificate] certIndex: %s", certIndex)
 	if strings.Contains(certIndex, "-----BEGIN") && strings.Contains(keyIndex, "-----BEGIN") {
 		return tls.X509KeyPair([]byte(certIndex), []byte(keyIndex))
 	}

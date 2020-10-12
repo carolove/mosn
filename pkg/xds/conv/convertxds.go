@@ -95,7 +95,7 @@ func ConvertListenerConfig(xdsListener *xdsapi.Listener) *v2.Listener {
 			Inspector:      true,
 			AccessLogs:     convertAccessLogs(xdsListener),
 		},
-		Addr: convertAddress(xdsListener.Address),
+		Addr:                    convertAddress(xdsListener.Address),
 		PerConnBufferLimitBytes: xdsListener.GetPerConnectionBufferLimitBytes().GetValue(),
 	}
 
@@ -166,7 +166,7 @@ func ConvertClustersConfig(xdsClusters []*xdsapi.Cluster) []*v2.Cluster {
 		var tls v2.TLSConfig
 		if xdsCluster.GetTransportSocket() != nil {
 			tls, _ = convertSdsUpStreamConfig(xdsCluster.GetTransportSocket())
-		}else if xdsCluster.GetTlsContext() != nil {
+		} else if xdsCluster.GetTlsContext() != nil {
 			tls = convertTLS(xdsCluster.GetTlsContext())
 		}
 		cluster := &v2.Cluster{
@@ -1386,6 +1386,7 @@ func convertTLS(xdsTLSContext interface{}) v2.TLSConfig {
 	} else if context, ok := xdsTLSContext.(*xdsauth.UpstreamTlsContext); ok {
 
 		config.ServerName = context.GetSni()
+		log.DefaultLogger.Infof("[convertTLS] config.ServerName:%s", config.ServerName)
 		common = context.GetCommonTlsContext()
 		isDownstream = false
 	}
