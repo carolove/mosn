@@ -188,6 +188,7 @@ func (subscribe *SdsSubscriber) getSdsStreamClient(sdsStreamConfig *SdsStreamCon
 	// TODO
 	// uds path should come from sdsClusterName,
 	// when sdsClusterName is empty, use sdsUdsPath instead.
+
 	udsPath := "unix:" + sdsStreamConfig.sdsUdsPath
 	if sdsStreamConfig.sdsClusterName != "" {
 		udsPath = "unix:/etc/istio/proxy/SDS"

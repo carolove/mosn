@@ -46,6 +46,7 @@ func (c *Conn) chooseCiphersuitesFromConfig() []uint16 {
 
 func (c *Conn) makeClientHello() (*clientHelloMsg, ecdheParameters, error) {
 	config := c.config
+	fmt.Printf("[makeClientHello] config:%#v", *config)
 	if len(config.ServerName) == 0 && !config.InsecureSkipVerify {
 		return nil, nil, errors.New("tls: either ServerName or InsecureSkipVerify must be specified in the tls.Config")
 	}
