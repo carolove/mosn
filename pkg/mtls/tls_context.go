@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"mosn.io/mosn/pkg/config/v2"
+	v2 "mosn.io/mosn/pkg/config/v2"
 	"mosn.io/mosn/pkg/log"
 	"mosn.io/mosn/pkg/mtls/crypto/tls"
 	"mosn.io/mosn/pkg/types"
@@ -92,6 +92,11 @@ func (ctx *tlsContext) setClientConfig(tmpl *tls.Config, cfg *v2.TLSConfig, hook
 	tlsConfig := tmpl.Clone()
 	tlsConfig.ServerName = cfg.ServerName
 	tlsConfig.VerifyPeerCertificate = hooks.ClientHandshakeVerify(tlsConfig)
+
+	// TODO
+	// as server name is empty, recently skip verify insecure certs.
+	tlsConfig.InsecureSkipVerify = true
+
 	if tlsConfig.VerifyPeerCertificate != nil {
 		// use self verify, skip normal verify
 		tlsConfig.InsecureSkipVerify = true

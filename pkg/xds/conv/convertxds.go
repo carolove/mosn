@@ -95,7 +95,7 @@ func ConvertListenerConfig(xdsListener *xdsapi.Listener) *v2.Listener {
 			Inspector:      true,
 			AccessLogs:     convertAccessLogs(xdsListener),
 		},
-		Addr: convertAddress(xdsListener.Address),
+		Addr:                    convertAddress(xdsListener.Address),
 		PerConnBufferLimitBytes: xdsListener.GetPerConnectionBufferLimitBytes().GetValue(),
 	}
 
@@ -166,7 +166,7 @@ func ConvertClustersConfig(xdsClusters []*xdsapi.Cluster) []*v2.Cluster {
 		var tls v2.TLSConfig
 		if xdsCluster.GetTransportSocket() != nil {
 			tls, _ = convertSdsUpStreamConfig(xdsCluster.GetTransportSocket())
-		}else if xdsCluster.GetTlsContext() != nil {
+		} else if xdsCluster.GetTlsContext() != nil {
 			tls = convertTLS(xdsCluster.GetTlsContext())
 		}
 		cluster := &v2.Cluster{
@@ -436,6 +436,13 @@ func convertStreamFilter(name string, s *any.Any) v2.Filter {
 		}
 		filter.Type = name
 		filter.Config = m
+	case v2.ENVOYRBACFilterType:
+		filter.Type = v2.RBACFilterType
+		filter.Config, err = convertRbacConfig(s)
+		if err != nil {
+			// TODO: if rbac config is in PerRoute format, use empty config to make sure rbac filter will be initialized.
+			log.DefaultLogger.Errorf("convertRbacConfig error: %v", err)
+		}
 	default:
 	}
 
@@ -598,6 +605,27 @@ func convertUdpaTypedStructConfig(s *any.Any) (map[string]interface{}, error) {
 		return nil, err
 	}
 	err = json.Unmarshal(buf.Bytes(), &config)
+	if err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+func convertRbacConfig(s *any.Any) (map[string]interface{}, error) {
+	rbacConfig := v2.RBAC{}
+	err := ptypes.UnmarshalAny(s, &rbacConfig.RBAC)
+	if err != nil {
+		return nil, err
+	}
+
+	marshaler := jsonp.Marshaler{}
+	str, err := marshaler.MarshalToString(&rbacConfig.RBAC)
+	if err != nil {
+		return nil, err
+	}
+
+	var config map[string]interface{}
+	err = json.Unmarshal([]byte(str), &config)
 	if err != nil {
 		return nil, err
 	}
@@ -960,15 +988,15 @@ func convertRouteMatch(xdsRouteMatch *xdsroute.RouteMatch) v2.RouterMatch {
 }
 
 /*
- func convertRuntime(xdsRuntime *xdscore.RuntimeUInt32) v2.RuntimeUInt32 {
-	 if xdsRuntime == nil {
-		 return v2.RuntimeUInt32{}
-	 }
-	 return v2.RuntimeUInt32{
-		 DefaultValue: xdsRuntime.GetDefaultValue(),
-		 RuntimeKey:   xdsRuntime.GetRuntimeKey(),
-	 }
- }
+  func convertRuntime(xdsRuntime *xdscore.RuntimeUInt32) v2.RuntimeUInt32 {
+	  if xdsRuntime == nil {
+		  return v2.RuntimeUInt32{}
+	  }
+	  return v2.RuntimeUInt32{
+		  DefaultValue: xdsRuntime.GetDefaultValue(),
+		  RuntimeKey:   xdsRuntime.GetRuntimeKey(),
+	  }
+  }
 */
 
 func convertHeaders(xdsHeaders []*xdsroute.HeaderMatcher) []v2.HeaderMatcher {
@@ -1171,21 +1199,21 @@ func convertDirectResponseAction(xdsDirectResponseAction *xdsroute.DirectRespons
 }
 
 /*
- func convertVirtualClusters(xdsVirtualClusters []*xdsroute.VirtualCluster) []v2.VirtualCluster {
-	 if xdsVirtualClusters == nil {
-		 return nil
-	 }
-	 virtualClusters := make([]v2.VirtualCluster, 0, len(xdsVirtualClusters))
-	 for _, xdsVirtualCluster := range xdsVirtualClusters {
-		 virtualCluster := v2.VirtualCluster{
-			 Pattern: xdsVirtualCluster.GetPattern(),
-			 Name:    xdsVirtualCluster.GetName(),
-			 Method:  xdsVirtualCluster.GetMethod().String(),
-		 }
-		 virtualClusters = append(virtualClusters, virtualCluster)
-	 }
-	 return virtualClusters
- }
+  func convertVirtualClusters(xdsVirtualClusters []*xdsroute.VirtualCluster) []v2.VirtualCluster {
+	  if xdsVirtualClusters == nil {
+		  return nil
+	  }
+	  virtualClusters := make([]v2.VirtualCluster, 0, len(xdsVirtualClusters))
+	  for _, xdsVirtualCluster := range xdsVirtualClusters {
+		  virtualCluster := v2.VirtualCluster{
+			  Pattern: xdsVirtualCluster.GetPattern(),
+			  Name:    xdsVirtualCluster.GetName(),
+			  Method:  xdsVirtualCluster.GetMethod().String(),
+		  }
+		  virtualClusters = append(virtualClusters, virtualCluster)
+	  }
+	  return virtualClusters
+  }
 */
 
 func convertAddress(xdsAddress *xdscore.Address) net.Addr {
@@ -1317,24 +1345,24 @@ func convertCircuitBreakers(xdsCircuitBreaker *xdscluster.CircuitBreakers) v2.Ci
 }
 
 /*
- func convertOutlierDetection(xdsOutlierDetection *xdscluster.OutlierDetection) v2.OutlierDetection {
-	 if xdsOutlierDetection == nil || xdsOutlierDetection.Size() == 0 {
-		 return v2.OutlierDetection{}
-	 }
-	 return v2.OutlierDetection{
-		 Consecutive5xx:                     xdsOutlierDetection.GetConsecutive_5Xx().GetValue(),
-		 Interval:                           convertDuration(xdsOutlierDetection.GetInterval()),
-		 BaseEjectionTime:                   convertDuration(xdsOutlierDetection.GetBaseEjectionTime()),
-		 MaxEjectionPercent:                 xdsOutlierDetection.GetMaxEjectionPercent().GetValue(),
-		 ConsecutiveGatewayFailure:          xdsOutlierDetection.GetEnforcingConsecutive_5Xx().GetValue(),
-		 EnforcingConsecutive5xx:            xdsOutlierDetection.GetConsecutive_5Xx().GetValue(),
-		 EnforcingConsecutiveGatewayFailure: xdsOutlierDetection.GetEnforcingConsecutiveGatewayFailure().GetValue(),
-		 EnforcingSuccessRate:               xdsOutlierDetection.GetEnforcingSuccessRate().GetValue(),
-		 SuccessRateMinimumHosts:            xdsOutlierDetection.GetSuccessRateMinimumHosts().GetValue(),
-		 SuccessRateRequestVolume:           xdsOutlierDetection.GetSuccessRateRequestVolume().GetValue(),
-		 SuccessRateStdevFactor:             xdsOutlierDetection.GetSuccessRateStdevFactor().GetValue(),
-	 }
- }
+  func convertOutlierDetection(xdsOutlierDetection *xdscluster.OutlierDetection) v2.OutlierDetection {
+	  if xdsOutlierDetection == nil || xdsOutlierDetection.Size() == 0 {
+		  return v2.OutlierDetection{}
+	  }
+	  return v2.OutlierDetection{
+		  Consecutive5xx:                     xdsOutlierDetection.GetConsecutive_5Xx().GetValue(),
+		  Interval:                           convertDuration(xdsOutlierDetection.GetInterval()),
+		  BaseEjectionTime:                   convertDuration(xdsOutlierDetection.GetBaseEjectionTime()),
+		  MaxEjectionPercent:                 xdsOutlierDetection.GetMaxEjectionPercent().GetValue(),
+		  ConsecutiveGatewayFailure:          xdsOutlierDetection.GetEnforcingConsecutive_5Xx().GetValue(),
+		  EnforcingConsecutive5xx:            xdsOutlierDetection.GetConsecutive_5Xx().GetValue(),
+		  EnforcingConsecutiveGatewayFailure: xdsOutlierDetection.GetEnforcingConsecutiveGatewayFailure().GetValue(),
+		  EnforcingSuccessRate:               xdsOutlierDetection.GetEnforcingSuccessRate().GetValue(),
+		  SuccessRateMinimumHosts:            xdsOutlierDetection.GetSuccessRateMinimumHosts().GetValue(),
+		  SuccessRateRequestVolume:           xdsOutlierDetection.GetSuccessRateRequestVolume().GetValue(),
+		  SuccessRateStdevFactor:             xdsOutlierDetection.GetSuccessRateStdevFactor().GetValue(),
+	  }
+  }
 */
 
 func convertSpec(xdsCluster *xdsapi.Cluster) v2.ClusterSpecInfo {
@@ -1386,6 +1414,7 @@ func convertTLS(xdsTLSContext interface{}) v2.TLSConfig {
 	} else if context, ok := xdsTLSContext.(*xdsauth.UpstreamTlsContext); ok {
 
 		config.ServerName = context.GetSni()
+		log.DefaultLogger.Infof("[convertTLS] config.ServerName:%s", config.ServerName)
 		common = context.GetCommonTlsContext()
 		isDownstream = false
 	}
