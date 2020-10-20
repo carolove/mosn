@@ -92,9 +92,10 @@ func (ctx *tlsContext) setClientConfig(tmpl *tls.Config, cfg *v2.TLSConfig, hook
 	tlsConfig := tmpl.Clone()
 	tlsConfig.ServerName = cfg.ServerName
 	tlsConfig.VerifyPeerCertificate = hooks.ClientHandshakeVerify(tlsConfig)
+
 	// TODO
-	// in MOSN, the default action is skip verify insecure certs.
-	// tlsConfig.InsecureSkipVerify = true
+	// as server name is empty, recently skip verify insecure certs.
+	tlsConfig.InsecureSkipVerify = true
 
 	if tlsConfig.VerifyPeerCertificate != nil {
 		// use self verify, skip normal verify
