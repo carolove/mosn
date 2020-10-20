@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"istio.io/api/mixer/v1/config/client"
+
+	envoy_config_v2 "github.com/envoyproxy/go-control-plane/envoy/config/filter/http/rbac/v2"
 	"mosn.io/api"
 )
 
@@ -91,6 +93,7 @@ const (
 const (
 	MIXER          = "mixer"
 	FaultStream    = "fault"
+	RbacStream     = "rbac"
 	PayloadLimit   = "payload_limit"
 	Gzip           = "gzip"
 	FaultTolerance = "fault_tolerance"
@@ -128,6 +131,12 @@ type StreamTranscoder struct {
 type FaultInject struct {
 	FaultInjectConfig
 	DelayDuration uint64 `json:"-"`
+}
+
+// RBAC
+type RBAC struct {
+	envoy_config_v2.RBAC
+	Version string `json:"version"`
 }
 
 // PayloadLimitInject
