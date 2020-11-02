@@ -41,13 +41,15 @@ func NewRoleBasedAccessControlEngine(rbacConfig *envoy_config_v2.RBAC) (*RoleBas
 	engine.Action = rbacConfig.GetAction()
 
 	// fill engine policies
-	engine.InheritPolicies = make(map[string]*InheritPolicy)
-	for name, policy := range rbacConfig.Policies {
-		if inheritPolicy, err := NewInheritPolicy(policy); err != nil {
-			// skip to the next policy
-			continue
-		} else {
-			engine.InheritPolicies[name] = inheritPolicy
+	if rbacConfig != nil {
+		engine.InheritPolicies = make(map[string]*InheritPolicy)
+		for name, policy := range rbacConfig.Policies {
+			if inheritPolicy, err := NewInheritPolicy(policy); err != nil {
+				// skip to the next policy
+				continue
+			} else {
+				engine.InheritPolicies[name] = inheritPolicy
+			}
 		}
 	}
 

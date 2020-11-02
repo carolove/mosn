@@ -68,14 +68,17 @@ func NewStatus(config *v2.RBAC) *Status {
 	status.ShadowEngineAllowedTotal = new(atomic.Int64)
 	status.ShadowEngineDeniedTotal = new(atomic.Int64)
 
-	status.EnginePoliciesMetrics = make(map[string]*atomic.Int64)
-	for name := range config.Rules.Policies {
-		status.EnginePoliciesMetrics[name] = new(atomic.Int64)
+	if config.Rules != nil {
+		status.EnginePoliciesMetrics = make(map[string]*atomic.Int64)
+		for name := range config.Rules.Policies {
+			status.EnginePoliciesMetrics[name] = new(atomic.Int64)
+		}
 	}
-
-	status.ShadowEnginePoliciesMetrics = make(map[string]*atomic.Int64)
-	for name := range config.ShadowRules.Policies {
-		status.ShadowEnginePoliciesMetrics[name] = new(atomic.Int64)
+	if config.ShadowRules != nil {
+		status.ShadowEnginePoliciesMetrics = make(map[string]*atomic.Int64)
+		for name := range config.ShadowRules.Policies {
+			status.ShadowEnginePoliciesMetrics[name] = new(atomic.Int64)
+		}
 	}
 
 	return status

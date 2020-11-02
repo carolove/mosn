@@ -19,10 +19,12 @@ package common
 
 import (
 	"fmt"
-	"mosn.io/api"
 	"net"
 	"reflect"
 	"strconv"
+
+	"mosn.io/api"
+	"mosn.io/mosn/pkg/log"
 
 	envoy_config_rbac_v2 "github.com/envoyproxy/go-control-plane/envoy/config/rbac/v2"
 	"mosn.io/mosn/pkg/mtls"
@@ -237,20 +239,22 @@ func NewPrincipalAuthenticated(principal *envoy_config_rbac_v2.Principal_Authent
 func (principal *PrincipalAuthenticated) Match(cb api.StreamReceiverFilterHandler, headers api.HeaderMap) bool {
 	conn := cb.Connection().RawConn()
 	if tlsConn, ok := conn.(*mtls.TLSConn); ok {
+		log.DefaultLogger.Debugf("[PrincipalAuthenticated] match, ServerName:%s", tlsConn.ConnectionState().ServerName)
 		cert := tlsConn.ConnectionState().PeerCertificates[0]
 
 		// TODO: x509.Certificate.URIs is supported after go1.10
 		// SAN URIs check
+
 		for _, uri := range cert.URIs {
-			fmt.Println("pricipal.Name: " + principal.Name + ", uri: " + uri.String())
+			log.DefaultLogger.Debugf("[PrincipalAuthenticated] match, principal.Name: %s, cert.URIs:%s", principal.Name, uri.String())
 			if principal.Name == uri.String() {
 				return true
 			}
 		}
 
 		// Subject Common Name check
-		fmt.Println("pricipal.Name: " + principal.Name + ", cert.Subject.CommonName: " + cert.Subject.CommonName)
 		if principal.Name == cert.Subject.CommonName {
+			log.DefaultLogger.Debugf("[PrincipalAuthenticated] match, pricipal.Name:%s, cert.Subject.CommonName: %s", principal.Name, cert.Subject.CommonName)
 			return true
 		}
 
@@ -258,6 +262,13 @@ func (principal *PrincipalAuthenticated) Match(cb api.StreamReceiverFilterHandle
 	} else {
 		return false
 	}
+}
+
+func NewPrincipalMetadata(principal *envoy_config_rbac_v2.Principal_Metadata) (*PrincipalAuthenticated, error) {
+	return &PrincipalAuthenticated{
+		// TODO: principal.Authenticated.GetName()
+		Name: fmt.Sprintf("spiffe://%s", principal.Metadata.GetValue().GetStringMatch().GetExact()),
+	}, nil
 }
 
 // Receive the envoy_config_rbac_v2.Principal input and convert it to mosn rbac principal
@@ -284,6 +295,8 @@ func NewInheritPrincipal(principal *envoy_config_rbac_v2.Principal) (InheritPrin
 		return NewPrincipalOrIds(principal.Identifier.(*envoy_config_rbac_v2.Principal_OrIds))
 	case *envoy_config_rbac_v2.Principal_Authenticated_:
 		return NewPrincipalAuthenticated(principal.Identifier.(*envoy_config_rbac_v2.Principal_Authenticated_))
+	case *envoy_config_rbac_v2.Principal_Metadata:
+		return NewPrincipalMetadata(principal.Identifier.(*envoy_config_rbac_v2.Principal_Metadata))
 	default:
 		return nil, fmt.Errorf("[NewInheritPrincipal] not supported Principal.Identifier type found, detail: %v",
 			reflect.TypeOf(principal.Identifier))
